@@ -7,6 +7,20 @@ const mySwiper = new Swiper('.swiper-container', {
 		prevEl: '.slider-button-prev',
 	},
 });
+//scroll smooth
+(function(){
+	const scrollLink = document.querySelectorAll('a.scroll-link');
+	for(const scrollLin of scrollLink){
+		scrollLin.addEventListener('click', event => {
+			 event.preventDefault();
+			 const id = scrollLin.getAttribute('href');
+			 document.querySelector(id).scrollIntoView({
+				 behavior: 'smooth',
+				 block: 'start',
+			 })
+		});
+	}
+})();
 
 
 //cart
@@ -20,32 +34,39 @@ const showAcsessories = document.querySelectorAll('.show-acsessories');
 const showClothing = document.querySelectorAll('.show-clothing');
 const cartTableGoods = document.querySelector('.cart-table__goods');
 const cardTableTotal = document.querySelector('.card-table__total');
+const cartCount = document.querySelector('.cart-count');
+const btnDanger = document.querySelector('.btn-danger');
 
 //goods
-const getGoods = async () => {
-	const result = await fetch('db/db.json')
-	if(!result){
-		throw  'false ' + result.status;
+const checkGoods =  () => {
+	const data = []
+	return async () => {
+		console.log(data);
+		if(data.length) return data;
+		const result = await fetch('db/db.json')
+		if(!result.ok){
+			throw  'false ' + result.status;
+		}
+		
+		data.push(...(await result.json()));
+		return data;
 	}
-	return await result.json();
+	
 }
-
+const getGoods = checkGoods();
 //modal
 const cart = {
-	cartGoods: [
-		{
-			id: "099",
-			name: "watch",
-			price: 999,
-			count: 2,
-		},
-		{
-			id: "090",
-			name: "boots",
-			price: 9,
-			count: 3,
-		},
-	],
+	cartGoods: [],
+	countQuantity(){
+		cartCount.textContent = this.cartGoods.reduce((sum, item) => {
+          return sum + item.count;
+	  },0);
+	},
+	clearCart(){
+	   this.cartGoods.length = 0;
+       this.countQuantity();
+	   this.renderCart();
+	},
 	renderCart(){
 		cartTableGoods.textContent = '';
 		this.cartGoods.forEach(({id, name, price, count}) => {
@@ -81,26 +102,26 @@ const cart = {
 					name,
 					price,
 					count: 1,
-				})
+				});
+				this.countQuantity();
 			});
 		};
 	},
 	deleteGood(id){
 		this.cartGoods = this.cartGoods.filter(item => id !== item.id);
 		this.renderCart();
+		this.countQuantity();
 	},
 	minusGood(id){
 		for(const item of this.cartGoods){
 			if(item.id === id){
-				if(item.count <= 1){
-					this.deleteGood(id);
-				}else{
-					item.count--;
-				}
+				item.count--;
+				if(!item.count) this.deleteGood(id);
 				break;
 			}
 		}
 		this.renderCart();
+		this.countQuantity();
 	},
 	plusGood(id){
 		for(const item of this.cartGoods){
@@ -110,8 +131,11 @@ const cart = {
 			}
 		}
 		this.renderCart();
+		this.countQuantity();
 	},
 }
+btnDanger.addEventListener('click', cart.clearCart.bind(cart));
+
 
 document.body.addEventListener('click', event => {
 	const addToCart = event.target.closest('.add-to-cart');
@@ -150,20 +174,7 @@ modalCart.addEventListener('click', (event) => {
 	closeModal();
   }
 });
-//scroll smooth
-(function(){
-	const scrollLink = document.querySelectorAll('a.scroll-link');
-	for(const scrollLin of scrollLink){
-		scrollLin.addEventListener('click', event => {
-			 event.preventDefault();
-			 const id = scrollLin.getAttribute('href');
-			 document.querySelector(id).scrollIntoView({
-				 behavior: 'smooth',
-				 block: 'start',
-			 })
-		});
-	}
-})();
+
 
 // create card
 
@@ -228,3 +239,35 @@ showClothing.forEach(item => {
 		filterCards('category', 'Clothing');
 	});
 });
+
+
+// 4 day work with form
+
+const modalForm = document.querySelector('.modal-form');
+const postData = dataUser => fetch('server.php', {
+   method: 'POST',
+   body: dataUser,
+});
+
+modalForm.addEventListener('submit', event => {
+	event.preventDefault();
+	const formData = new FormData(modalForm);
+	formData.append('cart', JSON.stringify(cart.cartGoods));
+	postData(formData)
+	.then(response => {
+		if(!response.ok){
+			throw new Error(response.status);
+		}
+		alert("Ваш заказ успешно отправлен, мы с вами свяжемся!");
+	})
+	.catch(error => {
+		alert('ERROR 404');
+	})
+	.finally(() => {
+		closeModal();
+		modalForm.reset();
+		cart.cartGoods.length =0;
+	});
+})
+
+

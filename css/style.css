@@ -459,7 +459,13 @@ button {
 .col-delete {
     width: 5px;
 }
-
+.btn-danger{
+    background-color: tomato;
+    display: block;
+    height: 40px;
+    margin-right: 20px;
+    margin-top: -15px;
+}
 
 @media (max-width: 1200px) {
     .slide-1 {
